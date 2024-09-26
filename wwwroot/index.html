@@ -1,0 +1,89 @@
+﻿
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Todo App</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+
+
+<body>
+    <div id="app"></div>
+<script>
+    const model = {
+        inputs: {
+            text: null,
+        },
+    };
+
+    getData(); // Denne funksjonen henter data fra backend!
+
+    /*Dette er Frontend for øyeblikket. */
+    /* wwwroot av en mappe blir brukt for staticWeb innhold er en del av dealen når du skal ha backend som poster statiske filer i frontend.*/
+   
+    function updateView() { //En funksjon som oppdaterer viewet som i Java.
+        document.getElementById('app').innerHTML = /*HTML */`
+        <ul>
+            ${createTodoItemsHTML()}
+        </ul>
+        <input
+            type="text"
+            oninput="model.inputs.text=this.value" //Denne lagrer inputet i variabelen over kalt text.
+            value="${model.inputs.text || ''}" //Denne viser verdien av det som ståpr i text feltet og om det ikke står noe viser den blankt.
+        />
+        <button onclick="createTodoItem()">Lag ny</button>
+        `;
+    };
+
+    function createTodoItemsHTML() {
+        return model.todoItems.map(todoItem => /*HTML*//* Denne tar et todoItem Objekt og mapper det til listen av todoItems.*/` 
+            <li>
+                ${todoItem.text}
+                ${todoItem.done == null
+                ? `<button onclick="registerDone('${todoItem.id}')">Registrer fullført</button>` //Om done == null er det en knapp. Når vi bruker GUID må vi ha anførselstegn rundt id. etter : Dersom det er gjort vil det vise en tekst og dato for fullført.
+                : `| Fullført ${new Date(todoItem.done).toLocaleDateString()}`} 
+                <button onclick="deleteTodoItem('${todoItem.id}')">x</button>
+            </li>
+        `).join('');
+    };
+
+    async function getData() {
+        try {
+            const response = await axios.get('/todo');
+            model.todoItems = response.data;
+            updateView();
+        } catch (error) {
+            console.error(error.message);
+        };
+    };
+
+    async function createTodoItem() {
+        const todoItem = {
+            text: model.inputs.text //Et nytt objekt laget med input fra en bruker.
+        };
+        const response = await axios.post('/todo', todoItem); //Nytt nøkkelord post for å lage nye data. Sender med ojektet som et parameter til backend.
+        /*model.todoItems.push(todoItem);*/ //Denne pusher det nye itemet inn i modellen Edit: Trenker ikke pushe den inn i et array lengre for vi skal pushe til backend.
+        //Nå må vi kalle på getData på nytt.
+        await getData();
+    };
+
+    async function registerDone(id) {
+        const todoItem = model.todoItems.find(ti => ti.id === id); //Denne leter gjennom hva som ligger i db og finner den med rett Id
+        const response = await axios.put('/todo', todoItem); //Sender med h ele objektet den finner.
+        await getData();
+        //const todoItem = model.todoItems.find(ti => ti.id === id); //I dette tilfellet ti er en forkortelse på TodoItem. Denne søker gjennom listen av objekter i modellen og finner den som har Id lik input.
+        //todoItem.done = new Date().toISOString().substr(0, 10); //setter Done til en string. toISOString setter også klokkeslett, det fjernes med substr.
+        //updateView();
+    };
+
+    async function deleteTodoItem(id) {
+        const response = await axios.delete('/todo/' + id);
+        await getData();
+        //model.todoItems = model.todoItems.filter(ti => ti.id !== id); //Setter listen til et filtrert verson av seg selv hvor vi bare tar inn elementene som ikke har ID som den vi skal slette.
+        //updateView();
+    };
+
+</script>
+</body>
+</html>
